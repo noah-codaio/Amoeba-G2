@@ -55,18 +55,7 @@ def check_move(map_state, retract, move, periphery):
     if not set(move).issubset(set(movable)):
         return False
 
-    amoeba = np.copy(map_state)
-    amoeba[amoeba < 0] = 0
-    amoeba[amoeba > 0] = 1
-
-    for i, j in retract:
-        amoeba[i][j] = 0
-
-    for i, j in move:
-        amoeba[i][j] = 1
-
-    tmp = np.where(amoeba == 1)
-    result = list(zip(tmp[0], tmp[1]))
+    amoeba = updated_amoeba_map(map_state, retract, move)
     check = np.zeros((constants.map_dim, constants.map_dim), dtype=int)
 
     def update(c):
@@ -102,7 +91,7 @@ def map_to_coords(amoeba_map) -> list[tuple[int, int]]:
     return list(map(tuple, np.transpose(amoeba_map.nonzero()).tolist()))
 
 
-def center_of_mass(amoeba_map: npt.NDArray) -> tuple[float, float]:
+def on_expanded_map(amoeba_map: npt.NDArray) -> npt.NDArray:
     tiled_map = np.tile(amoeba_map, (2, 2))
 
     all_coords = map_to_coords(tiled_map)
@@ -120,6 +109,22 @@ def center_of_mass(amoeba_map: npt.NDArray) -> tuple[float, float]:
     traverse(tiled_map, update_map, traversal_start)
     filtered_coords = [coord for coord in all_coords if coord in seen_points]
     xs, ys = zip(*filtered_coords)
+    tiled_map = np.zeros_like(tiled_map)
+    tiled_map[(xs, ys)] = 1
+
+    # Debugging
+    # plt.clf()
+    # plt.scatter(xs, ys)
+    # plt.gca().set_xlim([0, 200])
+    # plt.gca().set_ylim([0, 200])
+    # plt.gca().invert_yaxis()
+    # plt.savefig(f"debug/expanded_{turn}.png", dpi=300)
+
+    return tiled_map
+
+
+def center_of_mass(amoeba_map: npt.NDArray) -> tuple[float, float]:
+    xs, ys = zip(*map_to_coords(on_expanded_map(amoeba_map)))
 
     cx = np.average(xs)
     cy = np.average(ys)
@@ -132,7 +137,7 @@ def traverse(
     callback: Callable[[tuple[int, int]], None],
     start_point: Optional[tuple[int, int]] = None,
 ):
-    amoeba_coords = set(map(tuple, np.transpose(amoeba_map.nonzero()).tolist()))
+    amoeba_coords = set(map_to_coords(amoeba_map))
     if start_point is None:
         start_point = next(iter(amoeba_coords))
     stack = [start_point]
@@ -212,21 +217,22 @@ class Player:
         # print("Amoeba:", amoeba_coords)
         center = center_of_mass(current_percept.amoeba_map)
 
-        delta = to_cartesian(min(current_percept.current_size / 2, 50), 3 * np.pi / 4)
+        delta = to_cartesian(min(current_percept.current_size / 2, 50), np.pi / 4)
         target_point = (center + delta) % 100
         print("Size", current_percept.current_size)
         print("Center", center)
         print("Delta", delta)
         print("Target", target_point)
 
-        plt.clf()
-        plt.scatter(amoeba_xs, amoeba_ys)
-        plt.gca().set_xlim([0, 100])
-        plt.gca().set_ylim([0, 100])
-        plt.gca().invert_yaxis()
-        plt.plot(center[0], center[1], color="green", marker="*")
-        plt.plot(target_point[0], target_point[1], color="red", marker="v")
-        plt.savefig(f"debug/{turn}.png", dpi=300)
+        # Debugging
+        # plt.clf()
+        # plt.scatter(amoeba_xs, amoeba_ys)
+        # plt.gca().set_xlim([0, 100])
+        # plt.gca().set_ylim([0, 100])
+        # plt.gca().invert_yaxis()
+        # plt.plot(center[0], center[1], color="green", marker="*")
+        # plt.plot(target_point[0], target_point[1], color="red", marker="v")
+        # plt.savefig(f"debug/{turn}.png", dpi=300)
 
         valid_additions_per_cell = {
             border_cell: [

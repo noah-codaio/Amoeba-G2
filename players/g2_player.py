@@ -15,6 +15,15 @@ from amoeba_state import AmoebaState
 turn = 0
 
 
+class PlayerParameters:
+    formation_threshold: float
+
+    def __init__(self, formation_threshold):
+        self.formation_threshold = formation_threshold
+
+
+default_params = PlayerParameters(0.9)
+
 # ---------------------------------------------------------------------------- #
 #                               Constants                                      #
 # ---------------------------------------------------------------------------- #
@@ -33,6 +42,8 @@ VERTICAL_SHIFT_LIST = (
     )
     * (round(np.ceil(100 / (VERTICAL_SHIFT_PERIOD * 2))))
 )[:100]
+
+FORMATION_THRESHOLD = 0.9
 
 # ---------------------------------------------------------------------------- #
 #                               Helper Functions                               #
@@ -162,6 +173,7 @@ class Player:
         metabolism: float,
         goal_size: int,
         precomp_dir: str,
+        params: PlayerParameters = default_params,
     ) -> None:
         """Initialise the player with the basic amoeba information
 
@@ -193,6 +205,7 @@ class Player:
         self.metabolism = metabolism
         self.goal_size = goal_size
         self.current_size = goal_size / 4
+        self.params = params
 
         # Class accessible percept variables, written at the start of each turn
         self.current_size: int = None
@@ -500,7 +513,9 @@ class Player:
             )
             # Check if current comb formation is filled
             comb_mask = self.amoeba_map[next_comb.nonzero()]
-            settled = (sum(comb_mask) / len(comb_mask)) > 0.50
+            settled = (
+                sum(comb_mask) / len(comb_mask)
+            ) > self.params.formation_threshold
             if not settled:
                 retracts, moves = self.get_morph_moves(next_comb)
 

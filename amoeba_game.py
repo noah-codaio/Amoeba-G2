@@ -223,6 +223,8 @@ class AmoebaGame:
 
         if not self.goal_reached:
             print("Goal size not achieved...\n\nFinal size: {}\nGoal size: {}".format(self.amoeba_size, self.goal_size))
+        
+        return (self.goal_reached, self.amoeba_size, self.turns)
 
     def play_turn(self):
         self.bacteria_move()

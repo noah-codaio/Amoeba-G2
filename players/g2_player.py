@@ -18,6 +18,20 @@ from amoeba_state import AmoebaState
 #                               Constants                                      #
 # ---------------------------------------------------------------------------- #
 
+ABLATION_STAGE = 4
+ENABLE_VERTICAL_FLIP = False
+ENABLE_FORMATION_THRESHOLD = False
+ENABLE_EXTRA_MOVES = False
+ENABLE_SORT_RETRACTS = False
+if ABLATION_STAGE >= 1:
+    ENABLE_VERTICAL_FLIP = True
+if ABLATION_STAGE >= 2:
+    ENABLE_FORMATION_THRESHOLD = True
+if ABLATION_STAGE >= 3:
+    ENABLE_EXTRA_MOVES = True
+if ABLATION_STAGE >= 4:
+    ENABLE_SORT_RETRACTS = True
+
 CENTER_X = constants.map_dim // 2
 CENTER_Y = constants.map_dim // 2
 
@@ -87,32 +101,60 @@ TEETH_SHIFT_PERIOD_MAP = {
     (25, 1.0): 6,
 }
 FORMATION_THRESHOLD_MAP = {
-    (3, 0.05): 0.5,
-    (3, 0.1): 0.5,
-    (3, 0.25): 0.5,
-    (3, 0.4): 0.5,
-    (3, 1.0): 0.5,
-    (5, 0.05): 0.5,
-    (5, 0.1): 0.5,
-    (5, 0.25): 0.5,
-    (5, 0.4): 0.5,
-    (5, 1.0): 0.5,
-    (8, 0.05): 0.5,
-    (8, 0.1): 0.5,
-    (8, 0.25): 0.5,
-    (8, 0.4): 0.5,
-    (8, 1.0): 0.5,
-    (15, 0.05): 0.7,
-    (15, 0.1): 0.7,
-    (15, 0.25): 0.7,
-    (15, 0.4): 0.7,
-    (15, 1.0): 0.7,
-    (25, 0.05): 0.8,
-    (25, 0.1): 0.8,
-    (25, 0.25): 0.8,
-    (25, 0.4): 0.8,
-    (25, 1.0): 0.8,
+    (3, 0.05): 1.0,
+    (3, 0.1): 1.0,
+    (3, 0.25): 1.0,
+    (3, 0.4): 1.0,
+    (3, 1.0): 1.0,
+    (5, 0.05): 1.0,
+    (5, 0.1): 1.0,
+    (5, 0.25): 1.0,
+    (5, 0.4): 1.0,
+    (5, 1.0): 1.0,
+    (8, 0.05): 1.0,
+    (8, 0.1): 1.0,
+    (8, 0.25): 1.0,
+    (8, 0.4): 1.0,
+    (8, 1.0): 1.0,
+    (15, 0.05): 1.0,
+    (15, 0.1): 1.0,
+    (15, 0.25): 1.0,
+    (15, 0.4): 1.0,
+    (15, 1.0): 1.0,
+    (25, 0.05): 1.0,
+    (25, 0.1): 1.0,
+    (25, 0.25): 1.0,
+    (25, 0.4): 1.0,
+    (25, 1.0): 1.0,
 }
+if ENABLE_FORMATION_THRESHOLD:
+    FORMATION_THRESHOLD_MAP = {
+        (3, 0.05): 0.5,
+        (3, 0.1): 0.5,
+        (3, 0.25): 0.5,
+        (3, 0.4): 0.5,
+        (3, 1.0): 0.5,
+        (5, 0.05): 0.5,
+        (5, 0.1): 0.5,
+        (5, 0.25): 0.5,
+        (5, 0.4): 0.5,
+        (5, 1.0): 0.5,
+        (8, 0.05): 0.5,
+        (8, 0.1): 0.5,
+        (8, 0.25): 0.5,
+        (8, 0.4): 0.5,
+        (8, 1.0): 0.5,
+        (15, 0.05): 0.7,
+        (15, 0.1): 0.7,
+        (15, 0.25): 0.7,
+        (15, 0.4): 0.7,
+        (15, 1.0): 0.7,
+        (25, 0.05): 0.8,
+        (25, 0.1): 0.8,
+        (25, 0.25): 0.8,
+        (25, 0.4): 0.8,
+        (25, 1.0): 0.8,
+    }
 VERTICAL_FLIP_SIZE_MAP = {
     (3, 0.05): 200,
     (3, 0.1): 200,
@@ -483,13 +525,16 @@ class Player:
         desired_points = map_to_coords(desired_amoeba)
 
         # Sort retracts based on distance from formation. Reduces straggling branches lagging behind formation.
-        kdtree = KDTree(desired_points)
         potential_retracts = [
             p
             for p in list(set(current_points).difference(set(desired_points)))
             if p in self.retractable_cells
         ]
-        potential_retracts.sort(reverse=True, key=lambda p: kdtree.query([p], k=1)[0])
+        if ENABLE_SORT_RETRACTS:
+            kdtree = KDTree(desired_points)
+            potential_retracts.sort(
+                reverse=True, key=lambda p: kdtree.query([p], k=1)[0]
+            )
 
         potential_extends = [
             p
@@ -574,6 +619,7 @@ class Player:
             and len(potential_retracts) > 0
             and len(extends) > 0
             and self.current_size > 16
+            and ENABLE_EXTRA_MOVES
         ):
             potential_extends = [
                 p
@@ -803,6 +849,7 @@ class Player:
             if (
                 memory_fields[MemoryFields.VerticalInvert]
                 and self.params.vertical_flip_size
+                and ENABLE_VERTICAL_FLIP
             ):
                 next_comb = np.rot90(next_comb)
                 next_bridge = np.rot90(next_bridge)
